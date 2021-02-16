@@ -1,12 +1,11 @@
 import { Op } from 'sequelize';
 
 import { CollectionPub, Pub } from 'server/models';
-import { issueCreatePubToken } from 'server/pub/tokens';
+import { buildPubOptions, sanitizePub, SanitizedPubData } from 'server/utils/queryHelpers';
+import { LayoutBlockPubs, LayoutBlock } from 'utils/layout/types';
+import { InitialData } from 'utils/types';
 
-import buildPubOptions from './pubOptions';
-import sanitizePub, { SanitizedPubData } from './pubSanitize';
-
-const getPubIdsForCollectionIds = async (collectionIds) => {
+const getPubIdsForCollectionIds = async (collectionIds: string[]) => {
 	if (collectionIds && collectionIds.length > 0) {
 		const collectionPubs = await CollectionPub.findAll({
 			where: {
@@ -18,14 +17,17 @@ const getPubIdsForCollectionIds = async (collectionIds) => {
 	return null;
 };
 
-const getPubIdQueryForPinnedPubs = (pinnedPubIds, scopedPubIds) => {
+const getPubIdQueryForPinnedPubs = (pinnedPubIds: string[], scopedPubIds: null | string[]) => {
 	if (scopedPubIds) {
 		return { [Op.in]: pinnedPubIds.filter((id) => scopedPubIds.includes(id)) };
 	}
 	return { [Op.in]: pinnedPubIds };
 };
 
-const getPubIdQueryForNonPinnedPubs = async (collectionIds, scopedPubIds) => {
+const getPubIdQueryForNonPinnedPubs = async (
+	collectionIds: string[],
+	scopedPubIds: null | string[],
+) => {
 	const matchingPubIds = await getPubIdsForCollectionIds(collectionIds);
 	if (matchingPubIds) {
 		const filteredPubIds = scopedPubIds
@@ -39,7 +41,12 @@ const getPubIdQueryForNonPinnedPubs = async (collectionIds, scopedPubIds) => {
 	return {};
 };
 
-const getPubsForLayoutBlock = async (blockContent, initialData, scopedPubIds, excludePubIds) => {
+const getPubsForLayoutBlock = async (
+	blockContent: LayoutBlockPubs['content'],
+	initialData: InitialData,
+	scopedPubIds: null | string[] = null,
+	excludeNonPinnedPubIds: null | Set<string> = null,
+) => {
 	const {
 		communityData: { id: communityId },
 	} = initialData;
@@ -68,7 +75,7 @@ const getPubsForLayoutBlock = async (blockContent, initialData, scopedPubIds, ex
 			where: {
 				communityId,
 				id: {
-					[Op.notIn]: [...limitedPinnedPubIds, ...excludePubIds],
+					[Op.notIn]: [...limitedPinnedPubIds, ...(excludeNonPinnedPubIds || [])],
 					...(await getPubIdQueryForNonPinnedPubs(collectionIds, scopedPubIds)),
 				},
 			},
@@ -83,7 +90,19 @@ const getPubsForLayoutBlock = async (blockContent, initialData, scopedPubIds, ex
 	return limitedPubs;
 };
 
-export const getPubsForLayout = async ({ blocks, forLayoutEditor, initialData, collectionId }) => {
+type GetPubsForLayoutOptions = {
+	blocks: LayoutBlock[];
+	forLayoutEditor: boolean;
+	initialData: InitialData;
+	collectionId?: string;
+};
+
+export const getPubsForLayout = async ({
+	blocks,
+	forLayoutEditor,
+	initialData,
+	collectionId,
+}: GetPubsForLayoutOptions): Promise<SanitizedPubData[][]> => {
 	const scopedPubIds = collectionId && (await getPubIdsForCollectionIds([collectionId]));
 
 	if (forLayoutEditor || scopedPubIds) {
@@ -95,63 +114,22 @@ export const getPubsForLayout = async ({ blocks, forLayoutEditor, initialData, c
 		return pubs.map((pub) => sanitizePub(pub.toJSON(), initialData)).filter((pub) => !!pub);
 	}
 
-	const pubBlocks = blocks.filter((block) => block.type === 'pubs');
-	return pubBlocks.reduce(async (pubsPromise, block) => {
-		const pubs = await pubsPromise;
-		const nextPubs = await getPubsForLayoutBlock(
+	const pubBlocks = blocks.filter((block): block is LayoutBlockPubs => block.type === 'pubs');
+	const pubs: SanitizedPubData[][] = [];
+	const seenPubIds = new Set<string>();
+
+	// eslint-disable-next-line no-restricted-syntax
+	for (const block of pubBlocks) {
+		// eslint-disable-next-line no-await-in-loop
+		const pubsForBlock = await getPubsForLayoutBlock(
 			block.content,
 			initialData,
 			scopedPubIds,
-			pubs.map((p) => p.id),
+			seenPubIds,
 		);
-		const nextPubsToAdd = nextPubs.filter((nextPub) => !pubs.some((p) => p.id === nextPub.id));
-		return [...pubs, ...nextPubsToAdd];
-	}, Promise.resolve([]));
-};
-
-export const enrichLayoutBlocksWithPubTokens = ({ blocks, initialData, collectionId }) => {
-	const { loginData, communityData } = initialData;
-	const userId = loginData && loginData.id;
-	if (blocks && userId) {
-		return blocks.map((block) => {
-			const { type, content } = block;
-			if (type === 'banner') {
-				const { buttonType, defaultCollectionIds } = content;
-				const createInCollectionIds = [
-					...(defaultCollectionIds || []),
-					collectionId,
-				].filter((x) => x);
-				if (buttonType === 'create-pub') {
-					return {
-						...block,
-						content: {
-							...content,
-							createPubToken: issueCreatePubToken({
-								userId,
-								communityId: communityData.id,
-								createInCollectionIds,
-							}),
-						},
-					};
-				}
-			}
-			return block;
-		});
+		pubsForBlock.forEach((pub) => seenPubIds.add(pub.id));
+		pubs.push(pubsForBlock);
 	}
-	return blocks;
-};
 
-export const enrichCollectionWithPubTokens = (collection, initialData) => {
-	const { layout, id: collectionId } = collection;
-	return {
-		...collection,
-		layout: {
-			...layout,
-			blocks: enrichLayoutBlocksWithPubTokens({
-				blocks: layout.blocks,
-				initialData,
-				collectionId,
-			}),
-		},
-	};
+	return pubs;
 };
