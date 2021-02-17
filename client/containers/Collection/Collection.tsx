@@ -4,15 +4,22 @@ import { Layout } from 'components';
 import { Pub, Collection as CollectionType } from 'utils/types';
 
 type Props = {
-	pubs: Pub[];
+	pubsByBlockId: Record<string, Pub[]>;
 	collection: CollectionType;
 };
 
 const Collection = (props: Props) => {
-	const { pubs, collection } = props;
+	const { pubsByBlockId, collection } = props;
 	if (collection.layout) {
 		const { blocks, isNarrow } = collection.layout;
-		return <Layout blocks={blocks} isNarrow={isNarrow} pubs={pubs} collection={collection} />;
+		return (
+			<Layout
+				blocks={blocks}
+				isNarrow={isNarrow}
+				pubsByBlockId={pubsByBlockId}
+				collection={collection}
+			/>
+		);
 	}
 	return null;
 };

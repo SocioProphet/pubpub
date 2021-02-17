@@ -18,6 +18,7 @@ export const getPubFirebaseDraft = async (
 		pubData.id,
 		historyKey,
 	);
+
 	if (latestTimestamp && pubData.draft) {
 		await Draft.update(
 			{ latestKeyAt: new Date(latestTimestamp) },
