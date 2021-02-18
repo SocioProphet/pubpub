@@ -28,7 +28,7 @@ const getQueryOrdering = (sort: Maybe<PubSortOrder>, inCollection: boolean): Pub
 const getPubsForLayoutBlock = async (
 	blockContent: BlockContent,
 	initialData: InitialData,
-	excludeNonPinnedPubIds: Set<string>,
+	excludeNonPinnedPubIds: string[],
 	scopedCollectionId?: string,
 ) => {
 	const {
@@ -52,7 +52,7 @@ const getPubsForLayoutBlock = async (
 				communityId,
 				collectionIds: collectionIds.length ? collectionIds : null,
 				scopedCollectionId,
-				excludePubIds: [...excludeNonPinnedPubIds],
+				excludePubIds: excludeNonPinnedPubIds,
 				ordering: getQueryOrdering(blockContent.sort, !!scopedCollectionId),
 				limit,
 			},
@@ -88,7 +88,7 @@ export const getPubsForLayout = async ({
 		const pubsForBlock = await getPubsForLayoutBlock(
 			block.content,
 			initialData,
-			seenPubIds,
+			Array.from(seenPubIds),
 			collectionId,
 		);
 		pubsForBlock.forEach((pub) => seenPubIds.add(pub.id));
