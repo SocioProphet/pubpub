@@ -1,8 +1,8 @@
 import { Page } from 'server/models';
 
-import { enrichLayoutBlocksWithPubTokens, getPubsForLayout } from '../layouts';
+import { enrichLayoutBlocksWithPubTokens, getLayoutPubsByBlock } from 'server/utils/layouts';
 
-export default async ({ query, forLayoutEditor, initialData }) => {
+export default async ({ query, initialData }) => {
 	const pageData = await Page.findOne({
 		where: {
 			...query,
@@ -10,9 +10,8 @@ export default async ({ query, forLayoutEditor, initialData }) => {
 		},
 	});
 
-	const pubsByBlockId = await getPubsForLayout({
+	const layoutPubsByBlock = await getLayoutPubsByBlock({
 		blocks: pageData.layout || [],
-		forLayoutEditor,
 		initialData,
 	});
 
@@ -22,6 +21,6 @@ export default async ({ query, forLayoutEditor, initialData }) => {
 			blocks: pageData.layout,
 			initialData,
 		} as any),
-		pubsByBlockId,
+		layoutPubsByBlock,
 	};
 };

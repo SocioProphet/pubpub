@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Button, Tooltip } from '@blueprintjs/core';
 import stickybits from 'stickybits';
 
-import { LayoutBlock } from 'utils/layout/types';
+import { LayoutBlock, LayoutPubsByBlock } from 'utils/layout';
 import { Pub, Community, Collection } from 'utils/types';
 
 import { useLayout } from './useLayout';
@@ -20,7 +20,7 @@ require('./layoutEditor.scss');
 type Props = {
 	onChange: (layout: LayoutBlock[]) => unknown;
 	initialLayout: LayoutBlock[];
-	initialPubsByBlockId: Record<string, Pub[]>;
+	initialLayoutPubsByBlock: LayoutPubsByBlock<Pub>;
 	collection?: Collection;
 	communityData: Community & {
 		pages: NonNullable<Community['pages']>;
@@ -51,7 +51,7 @@ const getTitleKindForBlock = (blockType: string) => {
 };
 
 const LayoutEditor = (props: Props) => {
-	const { initialLayout, initialPubsByBlockId, collection, communityData, onChange } = props;
+	const { initialLayout, initialLayoutPubsByBlock, collection, communityData, onChange } = props;
 	const {
 		layout,
 		changeLayout,
@@ -61,7 +61,11 @@ const LayoutEditor = (props: Props) => {
 		moveBlockUp,
 		moveBlockDown,
 	} = useLayout(initialLayout, onChange);
-	const { pubsByBlockId, allPubs } = useLayoutPubs(initialPubsByBlockId, layout);
+	const { pubsByBlockId, allPubs } = useLayoutPubs(
+		initialLayoutPubsByBlock,
+		layout,
+		collection && collection.id,
+	);
 
 	useEffect(() => {
 		const stickyInstance = stickybits('.block-header', {
@@ -122,7 +126,6 @@ const LayoutEditor = (props: Props) => {
 							pubsInBlock={pubsByBlockId[block.id]}
 							allPubs={allPubs}
 							communityData={communityData}
-							hideOrderControl={!collection}
 						/>
 					)}
 					{block.type === 'text' && (

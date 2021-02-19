@@ -12,7 +12,7 @@ type PubsQuery = {
 	communityId: string;
 	excludePubIds?: null | string[];
 	isReleased?: boolean;
-	limit?: number;
+	limit?: null | number;
 	offset?: number;
 	ordering?: PubQueryOrdering;
 	scopedCollectionId?: string;
@@ -123,7 +123,7 @@ const createPubIdsQueryString = (query: PubsQuery) => {
 		.toString();
 };
 
-export const sortPubsByListOfIds = (pubs: any[], pubIds: string[]) => {
+const sortPubsByListOfIds = (pubs: any[], pubIds: string[]) => {
 	return pubs.concat().sort((a, b) => pubIds.indexOf(a.id) - pubIds.indexOf(b.id));
 };
 
@@ -145,9 +145,7 @@ export const queryPubIds = async (query: PubsQuery): Promise<string[]> => {
 	return results.map((r) => r.pubId);
 };
 
-export const queryPubs = async (query: PubsQuery, options: PubGetOptions = {}) => {
-	const pubIds = await queryPubIds(query);
-	console.log(query, pubIds);
+export const getPubsById = async (pubIds: string[], options: PubGetOptions = {}) => {
 	const pubs = await Pub.findAll({
 		where: { id: { [Op.in]: pubIds } },
 		...buildPubOptions(options),

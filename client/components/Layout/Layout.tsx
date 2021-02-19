@@ -2,7 +2,12 @@ import React from 'react';
 import classNames from 'classnames';
 
 import { Collection, Pub } from 'utils/types';
-import { LayoutBlock, LayoutOptions } from 'utils/layout/types';
+import {
+	LayoutBlock,
+	LayoutOptions,
+	LayoutPubsByBlock,
+	resolveLayoutPubsByBlock,
+} from 'utils/layout';
 import { usePageContext } from 'utils/hooks';
 
 import LayoutPubs from './LayoutPubs';
@@ -17,13 +22,14 @@ require('./layout.scss');
 type Props = LayoutOptions & {
 	blocks: LayoutBlock[];
 	id?: string;
-	pubsByBlockId: Record<string, Pub[]>;
+	layoutPubsByBlock: LayoutPubsByBlock<Pub>;
 	collection?: Collection;
 };
 
 const Layout = (props: Props) => {
 	const { locationData, loginData, communityData } = usePageContext();
-	const { blocks, isNarrow, pubsByBlockId, id = '', collection } = props;
+	const { blocks, isNarrow, layoutPubsByBlock, id = '', collection } = props;
+	const pubsByBlockId = resolveLayoutPubsByBlock(layoutPubsByBlock);
 
 	const renderBlock = (block: LayoutBlock, index: number) => {
 		if (block.type === 'pubs') {

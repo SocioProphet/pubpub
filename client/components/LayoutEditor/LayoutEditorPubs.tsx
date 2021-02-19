@@ -15,7 +15,6 @@ type Props = {
 	block: LayoutBlockPubs;
 	allPubs: Pub[];
 	pubsInBlock: Pub[];
-	hideOrderControl: boolean;
 	communityData: Community & { collections: Collection[] };
 };
 
@@ -41,7 +40,6 @@ const LayoutEditorPubs = (props: Props) => {
 		allPubs,
 		pubsInBlock,
 		communityData,
-		hideOrderControl,
 	} = props;
 	const {
 		limit,
@@ -206,9 +204,6 @@ const LayoutEditorPubs = (props: Props) => {
 	};
 
 	const renderOrder = () => {
-		if (hideOrderControl) {
-			return null;
-		}
 		return (
 			<InputField label="Order">
 				<div className="bp3-button-group bp3-select">
