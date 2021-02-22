@@ -88,6 +88,8 @@ export default (
 		}
 	}
 
+	// TODO(ian): completely unsure why we can't just the `order` parameter within the `include`
+	// object for the query made above, but it doesn't seem to work.
 	const sortedReleases = pubData.releases
 		.concat()
 		.sort((a, b) => (new Date(a.createdAt) > new Date(b.createdAt) ? 1 : -1));
