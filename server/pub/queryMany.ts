@@ -28,15 +28,19 @@ const defaultColumns = {
 	updatedDate: knex.raw('greatest("Pubs"."updatedAt", max("Drafts"."latestKeyAt"))'),
 };
 
+const valueAssertedIn = <T>(value: T, range: T[]) => {
+	if (range.includes(value)) {
+		return value;
+	}
+	throw new Error(`${value} not in ${range}`);
+};
+
 const createColumns = (query: PubsQuery) => {
 	const { scopedCollectionId } = query;
-	if (scopedCollectionId) {
-		return {
-			...defaultColumns,
-			collectionRank: knex.raw('(array_agg("scopedCollectionPub"."rank"))[1]'),
-		};
-	}
-	return defaultColumns;
+	const collectionRank = scopedCollectionId
+		? knex.raw('(array_agg("scopedCollectionPub"."rank"))[1]')
+		: knex.raw('(array_agg("CollectionPubs"."rank"))[1]');
+	return { ...defaultColumns, collectionRank };
 };
 
 const createInnerWhereClause = (query: PubsQuery) => {
@@ -87,7 +91,8 @@ const createOrderLimitOffset = (query: PubsQuery) => {
 	return (builder: QueryBuilder) => {
 		if (ordering) {
 			const { field, direction } = ordering;
-			builder.orderBy(field, direction);
+			const paranoidDirection = valueAssertedIn(direction.toLowerCase(), ['asc', 'desc']);
+			builder.orderByRaw(`?? ${paranoidDirection} nulls last`, [field]);
 		}
 		if (typeof limit === 'number') {
 			builder.limit(limit);
@@ -128,10 +133,7 @@ const sortPubsByListOfIds = (pubs: any[], pubIds: string[]) => {
 };
 
 export const queryPubIds = async (query: PubsQuery): Promise<string[]> => {
-	const { limit, ordering, scopedCollectionId, collectionIds, withinPubIds } = query;
-	if (ordering && ordering.field === 'collectionRank' && !scopedCollectionId) {
-		throw new Error('Cannot order by rank without a scopedCollectionId');
-	}
+	const { limit, collectionIds, withinPubIds } = query;
 	const mustBeEmpty =
 		(collectionIds && !collectionIds.length) ||
 		(withinPubIds && !withinPubIds.length) ||
@@ -140,7 +142,6 @@ export const queryPubIds = async (query: PubsQuery): Promise<string[]> => {
 		return [];
 	}
 	const queryString = createPubIdsQueryString(query);
-	console.log(queryString);
 	const results = await sequelize.query(queryString, { type: QueryTypes.SELECT });
 	return results.map((r) => r.pubId);
 };

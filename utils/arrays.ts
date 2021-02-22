@@ -57,6 +57,19 @@ export const arraysAreEqual = <T>(
 	return true;
 };
 
+export const splitArrayOn = <T>(arr: T[], test: (t: T) => boolean): [T[], T[]] => {
+	const fails: T[] = [];
+	const passes: T[] = [];
+	arr.forEach((el) => {
+		if (test(el)) {
+			passes.push(el);
+		} else {
+			fails.push(el);
+		}
+	});
+	return [passes, fails];
+};
+
 export const arraysHaveSameElements = <T>(first: T[], second: T[]) => {
 	return first.every((el) => second.includes(el)) && second.every((el) => first.includes(el));
 };

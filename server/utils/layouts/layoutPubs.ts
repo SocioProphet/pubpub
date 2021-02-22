@@ -1,6 +1,12 @@
 import { queryPubIds, getPubsById, PubQueryOrdering } from 'server/pub/queryMany';
 import { sanitizePub, SanitizedPubData } from 'server/utils/queryHelpers';
-import { LayoutBlockPubs, LayoutBlock, LayoutPubsByBlock, PubSortOrder } from 'utils/layout';
+import {
+	LayoutBlockPubs,
+	LayoutBlock,
+	LayoutPubsByBlock,
+	PubSortOrder,
+	maxPubsPerBlock,
+} from 'utils/layout';
 import { InitialData, Maybe } from 'utils/types';
 
 type BlockContent = LayoutBlockPubs['content'];
@@ -13,16 +19,9 @@ const orderingsForSort: Partial<Record<PubSortOrder, PubQueryOrdering>> = {
 	'publish-date-reversed': { field: 'publishDate', direction: 'ASC' },
 };
 
-const getQueryOrdering = (sort: Maybe<PubSortOrder>, inCollection: boolean): PubQueryOrdering => {
+const getQueryOrdering = (sort: Maybe<PubSortOrder>): PubQueryOrdering => {
 	const selectedOrdering = sort && orderingsForSort[sort];
-	if (selectedOrdering) {
-		const { field } = selectedOrdering;
-		const improperlyRankingInCollection = field === 'collectionRank' && !inCollection;
-		if (!improperlyRankingInCollection) {
-			return selectedOrdering;
-		}
-	}
-	return { field: 'creationDate', direction: 'DESC' };
+	return selectedOrdering || { field: 'creationDate', direction: 'DESC' };
 };
 
 const getPubIdsForLayoutBlock = async (
@@ -32,7 +31,7 @@ const getPubIdsForLayoutBlock = async (
 	scopedCollectionId?: string,
 ) => {
 	const { limit, collectionIds = [], pubIds: pinnedPubIds = [] } = blockContent;
-	const resolvedLimit = limit === 0 ? null : limit;
+	const resolvedLimit = limit || maxPubsPerBlock;
 	const [availablePinnedPubIds, otherPubIds] = await Promise.all([
 		queryPubIds({
 			communityId,
@@ -45,7 +44,7 @@ const getPubIdsForLayoutBlock = async (
 			collectionIds: collectionIds.length ? collectionIds : null,
 			scopedCollectionId,
 			excludePubIds: [...excludeNonPinnedPubIds, ...pinnedPubIds],
-			ordering: getQueryOrdering(blockContent.sort, !!scopedCollectionId),
+			ordering: getQueryOrdering(blockContent.sort),
 			limit: resolvedLimit,
 		}),
 	]);

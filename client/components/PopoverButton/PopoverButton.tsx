@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { usePopoverState, PopoverDisclosure, Popover } from 'reakit';
+import { usePopoverState, PopoverDisclosure, Popover, PopoverInitialState } from 'reakit';
 import { Card } from '@blueprintjs/core';
 
 type Props = {
@@ -8,6 +8,10 @@ type Props = {
 	className?: string;
 	children: React.ReactElement;
 	component: React.ComponentType<any>;
+	portal?: boolean;
+	placement?: PopoverInitialState['placement'];
+	gutter?: number;
+	style?: React.CSSProperties;
 	[key: string]: any;
 };
 
@@ -17,9 +21,13 @@ const PopoverButton = (props: Props) => {
 		'aria-label': ariaLabel,
 		children,
 		className,
+		portal = true,
+		gutter = 5,
+		placement = 'bottom-end',
+		style = {},
 		...restProps
 	} = props;
-	const popover = usePopoverState({ unstable_fixed: false, placement: 'bottom-end', gutter: 5 });
+	const popover = usePopoverState({ unstable_fixed: false, placement, gutter });
 	return (
 		<>
 			<PopoverDisclosure {...popover} {...children.props}>
@@ -28,8 +36,9 @@ const PopoverButton = (props: Props) => {
 			<Popover
 				aria-label={ariaLabel}
 				className={className}
-				unstable_portal={true}
+				unstable_portal={portal}
 				tabIndex={0}
+				style={style}
 				{...popover}
 			>
 				<Card elevation={2}>

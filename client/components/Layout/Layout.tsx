@@ -29,7 +29,7 @@ type Props = LayoutOptions & {
 const Layout = (props: Props) => {
 	const { locationData, loginData, communityData } = usePageContext();
 	const { blocks, isNarrow, layoutPubsByBlock, id = '', collection } = props;
-	const pubsByBlockId = resolveLayoutPubsByBlock(layoutPubsByBlock);
+	const pubsByBlockId = resolveLayoutPubsByBlock(layoutPubsByBlock, blocks);
 
 	const renderBlock = (block: LayoutBlock, index: number) => {
 		if (block.type === 'pubs') {

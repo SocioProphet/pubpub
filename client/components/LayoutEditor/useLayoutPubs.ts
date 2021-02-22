@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePrevious } from 'react-use';
 
 import { Pub } from 'utils/types';
@@ -60,6 +60,8 @@ export const useLayoutPubs = (
 ) => {
 	const previousLayout = usePrevious(layout);
 	const [pubsById, setPubsById] = useState<Record<string, Pub>>(initialPubsByBlock.pubsById);
+	const [requestCount, setRequestCount] = useState(0);
+	const requestResolvedFromTime = useRef(0);
 	const [pubIdsByBlockId, setPubIdsByBlockId] = useState<Record<string, string[]>>(
 		initialPubsByBlock.pubIdsByBlockId,
 	);
@@ -70,13 +72,19 @@ export const useLayoutPubs = (
 			const nextPubBlocks = getPubBlocks(layout);
 			if (shouldRefetchLayoutPubs(previousPubBlocks, nextPubBlocks)) {
 				const alreadyFetchedPubIds = Object.keys(pubsById);
+				const requestInFlightAt = Date.now();
+				setRequestCount((c) => c + 1);
 				fetchLayoutPubsByBlock(nextPubBlocks, alreadyFetchedPubIds, collectionId).then(
 					(nextLayoutPubsByBlock) => {
-						setPubsById((currentPubsById) => ({
-							...currentPubsById,
-							...nextLayoutPubsByBlock.pubsById,
-						}));
-						setPubIdsByBlockId(nextLayoutPubsByBlock.pubIdsByBlockId);
+						if (requestInFlightAt > requestResolvedFromTime.current) {
+							requestResolvedFromTime.current = requestInFlightAt;
+							setPubsById((currentPubsById) => ({
+								...currentPubsById,
+								...nextLayoutPubsByBlock.pubsById,
+							}));
+							setPubIdsByBlockId(nextLayoutPubsByBlock.pubIdsByBlockId);
+							setRequestCount((c) => c - 1);
+						}
 					},
 				);
 			}
@@ -84,7 +92,8 @@ export const useLayoutPubs = (
 	}, [previousLayout, layout, pubsById, collectionId]);
 
 	return {
-		pubsByBlockId: resolveLayoutPubsByBlock({ pubIdsByBlockId, pubsById }),
+		pubsByBlockId: resolveLayoutPubsByBlock({ pubIdsByBlockId, pubsById }, layout),
 		allPubs: Object.values(pubsById),
+		loadingPubs: requestCount !== 0,
 	};
 };
